@@ -1,6 +1,7 @@
 #
 #
 import numpy as np
+import dseplib as dlib
 
 class Isochrone(object):
     
@@ -14,17 +15,28 @@ class Isochrone(object):
         self.feh = metallicity
         self.afe = alpha_enhancement
     
-        # isochrone location and file name [TO DO LATER]
-        self.directory = '../p010/a0/'
-        self.filename  = 'dmestar_{:05.0f}myr_fehp010.iso'.format(int(self.age/1.e6))
-        self.filepath  = self.directory + self.filename
+        # isochrone location and file name
+        feh_letter     = dlib.plusMinus(self.feh)
+        afe_letter     = dlib.plusMinus(self.afe)
+        
+        iso_directory  = dlib.iso_directory
+        feh_directory  = '{:s}{:03.0f}'.format(feh_letter, abs(self.feh*100.))
+        afe_directory  = 'a{:01.0f}'.format(abs(self.afe*10.))
+        afe_file       = '{:s}{:01.0f}'.format(afe_letter, abs(self.afe*10.))
+        self.directory = '{0}/{1}/{2}'.format(iso_directory, feh_directory,
+                                              afe_directory)
+        self.filename  = 'dmestar_{:05.0f}myr_feh{:s}_afe{:s}.iso'.format(
+                                                                   self.age/1.e6,
+                                                                   feh_directory,
+                                                                   afe_file)
+        self.filepath  = '{0}/{1}'.format(self.directory, self.filename)
         
         # check if isochrone file exists
         try:
             open(self.filepath)
-            self.file_exists = True
+            self.exists = True
         except:
-            self.file_exists = False
+            self.exists = False
     
     def loadIsochrone(self):
         """ Load isochrone from file 
@@ -34,7 +46,7 @@ class Isochrone(object):
         is saved in a variable separate from the rest of the isochrone 
         information.       
         """
-        if self.file_exists == False:
+        if self.exists == False:
             print '\nIsochrone does not exist. Generating new isochrone.\n'
         else:
             self.header    = self.loadIsochroneHeader()
@@ -81,8 +93,7 @@ class Isochrone(object):
         
     def addMagsToHeader(self):
         """ Add magnitude designation to header information """
-        s1 = '{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}\n'.format(
-            'B', 'V', 'R', 'I', 'V', 'I', 'J', 'H', 'K')
+        s = '{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}\n'.format('B', 'V', 'R', 'I', 'V', 'I', 'J', 'H', 'K')
         self.header[-1] = self.header[-1].rstrip()
         self.header[-1] += s
     
