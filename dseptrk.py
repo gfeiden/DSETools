@@ -28,8 +28,7 @@ class MassTrack(object):
         self.filepath   = '{0}/{1}'.format(self.directory, self.filename)
         
     def loadTrack(self, peel = True):
-        """ 
-            Load stellar evolution mass track into an array.
+        """ Load stellar evolution mass track into an array.
             
             The file associated with the mass track object is loaded if
             the file exists. Otherwise, the program will throw an error.
@@ -40,8 +39,9 @@ class MassTrack(object):
             
             INPUT
             -----
-            peel  --  determine whether or not to save the track file to
-                      one large array or as individual properties.
+                peel    --- determine whether or not to save the track 
+                            file to one large array or as individual 
+                            properties (OPTIONAL).
                       
         """
         try:

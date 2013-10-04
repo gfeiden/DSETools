@@ -6,7 +6,22 @@ import dseplib as dlib
 class Isochrone(object):
     
     def __init__(self, age, metallicity, alpha_enhancement = 0.0):
-        """ Initialize DSEP isochrone """
+        """ Initialize Dartmouth isochrone object
+            
+            This class defines a Dartmouth stellar evolution model 
+            isochrone at a given age, metallicity, and alpha abundance
+            enhancement. During the initialization routine, only isochrone
+            properties that can be determined before loading an actual
+            isochrone file are assigned. This is done primarily to save
+            time and memory when creating a new object. 
+            
+            INPUT
+            -----
+                age                 --- Age of the isochrone in years.
+                metallicity         --- Scaled-solar [Fe/H] (in dex)
+                alpha_enhancement   --- Alpha abundance enhancement (in dex)
+                     
+        """
         # isochrone properties
         if age < 1.e6:
             print "\nRequested age has incorrect units. Input age in Yrs.\n"
@@ -47,7 +62,7 @@ class Isochrone(object):
         information.       
         """
         if self.exists == False:
-            print '\nIsochrone does not exist. Generating new isochrone.\n'
+            print '\nIsochrone does not exist. Please create a new isochrone.\n'
         else:
             self.header    = self.loadIsochroneHeader()
             self.isochrone = np.genfromtxt(self.filepath, comments='#')
@@ -56,17 +71,20 @@ class Isochrone(object):
         """ Return isochrone numerical data """
         return self.isochrone
     
-    def createIsochrone(self, kind = 'simple'):
+    def generateIsochrone(self, kind = 'simple'):
         """ Create a new isochrone from mass track library """
-        import isogen
+        from isogen import createIsochrone, createHeader
         if kind not in ['simple', 'complex']:
             print '\nType of isochrone generation specified is incorrect.'
             print 'Choose either \'simple\' or \'complex\'.'
         else:
-            isogen.createIsochrone(age = self.age, 
-                                   metallicity = self.feh,
-                                   alpha_enhancement = self.afe, 
-                                   kind = kind)
+            #self.header    = createHeader(age = self.age, 
+            #                              metallicity = self.feh,
+            #                              alpha_enhancement = self.afe, 
+            self.isochrone = createIsochrone(age = self.age, 
+                                             metallicity = self.feh,
+                                             alpha_enhancement = self.afe, 
+                                             kind = kind)
         
     def loadIsochroneHeader(self):
         """ Read isochrone file header """
