@@ -24,3 +24,18 @@ feh_list  = [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1,
 afe_list  = [0.0, 0.2, 0.4]
 
 
+def getMassRange(brand):
+    """ Get range of track msases for model brand """
+    return mass_range[brand]
+
+def getAgeRange(brand):
+    """ Get range of isochrone ages for model brand """
+    return age_range[brand]
+
+def getFeHRange(brand):
+    """ Get range of metallicities for model brand """
+    return feh_range[brand]
+
+def getAFeRange(brand):
+    """ Get range of [alpha/Fe] for model brand """
+    return afe_range[brand]

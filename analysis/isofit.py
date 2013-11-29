@@ -2,7 +2,7 @@
 #
 from scipy.interpolate import interp1d
 
-def residuals(system, isochrone, independent = 'mass'):
+def residuals(system, isochrone, independent = 'mass', compare_to = []):
     """ Calculate residuals between components of a system and an isochrone. 
     
         This routine takes a system of stars and fits them to a stellar
@@ -13,29 +13,31 @@ def residuals(system, isochrone, independent = 'mass'):
         
         Required Arguments:
         -------------------
-        system      ::  stellar system object, either a star, binary, etc.
+        system       ::  stellar system object, either a star, binary, etc.
          
-        isochrone   ::  stellar evolution isochrone object
+        isochrone    ::  stellar evolution isochrone object
         
         
         Optional Arguments:
         -------------------
-        independent ::  independent variable used to interpolate in isochrone
+        independent  ::  independent variable used to interpolate in isochrone
+        
+        compare_to   ::  variables to perform comparison over
         
         
         Returns:
         --------
-        comp_vars   ::  list of strings that identify which variable is in 
-                        which column of the following output lists.
+        comp_vars    ::  list of strings that identify which variable is in 
+                         which column of the following output lists.
         
-        theory      ::  list of theoretical predictions for the given 
-                        independent variable (one star per row).
+        theory       ::  list of theoretical predictions for the given 
+                         independent variable (one star per row).
                         
-        errors      ::  list of signed relative errors for theoretical 
-                        predictions for each star (one star per row).
+        errors       ::  list of signed relative errors for theoretical 
+                         predictions for each star (one star per row).
         
-        nsigma      ::  list of residuals calculated as number of standard
-                        deviations from the known quantity. 
+        nsigma       ::  list of residuals calculated as number of standard
+                         deviations from the known quantity. 
     """
     if system.N_components == 1:
         system.stars = [system]
@@ -46,8 +48,11 @@ def residuals(system, isochrone, independent = 'mass'):
     else:
         isochrone.loadIsochrone()
         
-    # comparison order
-    comp_vars = ['mass', 'teff', 'radius', 'luminosity', 'logg']
+    # comparison variables
+    if len(compare_to) == 0: 
+        comp_vars = ['mass', 'teff', 'radius', 'luminosity', 'logg']
+    else:
+        comp_vars = compare_to.append(independent.lower())
     
     if independent.lower() in ['mass', 'm']:
         independent = 'mass'
@@ -135,6 +140,45 @@ def residuals(system, isochrone, independent = 'mass'):
         
     return comp_vars, theory, errors, nsigma
 
-def bestFit(system, isochrone_brand, independent = 'mass'):
-    """ Finds the best fit isochrone for a system of stars """
-    return
+def bestFit(system, isochrone_brand, fit_using = 'mass', compare_to = []):
+    """ Finds the best fit isochrone for a system of stars 
+    
+        Given a stellar system (single star, binary, or multiple), this
+        routine will find the stellar evolution isochrone that best fits
+        all N stars. 
+        
+        Required Arguments:
+        -------------------
+        system           ::  stellar system object.
+        
+        isochrone_brand  ::  string of the particular model set.
+        
+        Optional Arguments:
+        -------------------
+        fit_using        ::  independent variable for fitting data to models.
+        
+        compare_to       ::  variables to perform comparison over
+        
+        Returns:
+        --------
+    
+    """
+    from math    import sqrt
+    from ..model import isochrone, defs
+    
+    feh_range = defs.getFeHRange(isochrone_brand)
+    afe_range = defs.getAFeRange(isochrone_brand)
+    age_range = defs.getAgeRange(isochrone_brand)
+    
+    for afe in afe_range:
+        for feh in feh_range:
+            for age in age_range:
+                iso = isochrone.Isochrone(age*1.e6, feh, alpha_enhancement = afe,
+                                          brand = isochrone_brand)
+                resids = residuals(system, iso, independent = fit_using, 
+                                   compare_to = compare_to)
+                rmsd   = math.sqrt()
+                ## Have to find RMSD for each isochrone over all computed 
+                ## variables
+    
+    return 0
