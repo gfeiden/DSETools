@@ -1,9 +1,9 @@
 #
 #
-from . import analysis
-from . import model
-from . import star
-from . import utils
+from .analysis import *
+from .model    import *
+from .star     import *
+from .utils    import *
 
 
 __author__     = 'Gregory A. Feiden'

@@ -74,43 +74,60 @@ def isofit(system, isochrone, independent = 'mass'):
     
     theory = []    # theoretical predictions for observed stars
     errors = []    # relative errors (O - E)/E of theoretical predicitons
-    chi_sq = []    # unsigned relative errors for theoretical predictions
+    nsigma = []    # unsigned relative errors for theoretical predictions
     for star in system.stars:
         star_theory = []
         star_error  = []
-        star_chisq  = []
+        star_sigma  = []
         for prop in comp_vars:
             j = star.pdict[independent]
             obs = star.properties[star.pdict[prop]]
             
             i = isochrone.column[prop]
-            icurve = interp1d(isochrone.isochrone[:, dcol], isochrone.isochrone[:, i],
-                              kind = 'linear')
+            if prop in ['teff', 'radius', 'luminosity']:
+                icurve = interp1d(isochrone.isochrone[:, dcol], 
+                                  10.**isochrone.isochrone[:, i],
+                                  kind = 'linear')
+            else:
+                icurve = interp1d(isochrone.isochrone[:, dcol], 
+                                  isochrone.isochrone[:, i],
+                                  kind = 'linear')
             
             try:
-                theory = icurve(star.properties[j])
-                star_theory.append(theory)
-                star_error.append((obs[0] - theory)/obs[0])
-                star_chisq.append((obs[0] - theory)**2/obs[0])
+                model = icurve(star.properties[j][0])
+                star_theory.append(float(model))
             except ValueError:
                 star_theory.append(None)
-                star_error.append(None)
-                star_chisq.append(None)
             except TypeError:
                 star_theory.append(None)
+            
+            try:
+                star_error.append((obs[0] - model)/obs[0])
+            except ValueError:
                 star_error.append(None)
-                star_chisq.append(None)
+            except TypeError:
+                star_error.append(None)
+            
+            try:
+                star_sigma.append((obs[0] - model)/obs[1])
+            except ValueError:         
+                star_sigma.append(None)
+            except TypeError:
+                star_sigma.append(None)
             
         theory.append(star_theory)
         errors.append(star_error)
-        chi_sq.append(star_chisq)
+        nsigma.append(star_sigma)
     
-    # compute goodness of fit 
-    gof = []
-    for i in range(len(comp_vars)):
-        column_total = 0.
-        for row in chi_sq:
-            column_total += row[i]
-        gof.append(column_total)
+    ## compute goodness of fit
+    #gof = []
+    #for i in range(len(comp_vars)):
+        #column_total = 0.
+        #for row in chi_sq:
+            #try:
+                #column_total += row[i]
+            #except TypeError:
+                #column_total = None
+        #gof.append(column_total)
         
-    return comp_vars, theory, errors, gof
+    return comp_vars, theory, errors, nsigma

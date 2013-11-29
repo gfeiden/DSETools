@@ -16,7 +16,9 @@ class Star(object):
         self.metallicity = checkTuple(metallicity)
         self.Fe_H = checkTuple(Fe_H)
         self.A_Fe = checkTuple(A_Fe)
-        self.logg = 0.0
+        
+        logg = None
+        self.logg = checkTuple(logg)
         
         self.properties = [self.mass, self.radius, self.Teff, self.luminosity, self.logg]
         self.pdict      = {'mass': 0, 'radius': 1, 'teff': 2, 'luminosity': 3, 'logg': 4}

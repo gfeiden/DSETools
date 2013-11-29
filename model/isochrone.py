@@ -5,21 +5,45 @@ from . import defs
 
 class Isochrone(object):
     
-    def __init__(self, age, metallicity, alpha_enhancement = 0.0):
-        """ Initialize Dartmouth isochrone object
+    def __init__(self, age, metallicity, alpha_enhancement = 0.0, brand = 'Dartmouth'):
+        """ Initialize isochrone object
             
-            This class defines a Dartmouth stellar evolution model 
-            isochrone at a given age, metallicity, and alpha abundance
-            enhancement. During the initialization routine, only isochrone
-            properties that can be determined before loading an actual
-            isochrone file are assigned. This is done primarily to save
-            time and memory when creating a new object. 
+            This class defines a stellar evolution model isochrone at a
+            given age, metallicity, and alpha abundance enhancement. During
+            the initialization routine, properties that can be determined
+            before loading the actual isochrone data are assigned. 
             
-            INPUT
-            -----
-                age                 --- Age of the isochrone in years.
-                metallicity         --- Scaled-solar [Fe/H] (in dex)
-                alpha_enhancement   --- Alpha abundance enhancement (in dex)
+            Note that additional isochrone or model track sets can be added
+            and there is no real restriction to what options can be used.
+            However, all tracks and isochrones must be downloaded by the 
+            user from the original source and are not provided with this
+            software package.
+            
+            Required Arguments:
+            -------------------
+            age                ::  age of the isochrone (in years).
+            
+            metallicity        ::  scaled-solar [Fe/H] (in dex)
+            
+            Optional Arguments:
+            -------------------
+            alpha_enhancement  ::  alpha abundance enhancement (in dex)
+            
+            brand              ::  isochrone series, options are:
+                                     - 'Dartmouth' or 'DMESTAR' (Feiden+ 2014)
+                                     - 'Dartmouth08' or 'DSEP'  (Dotter+ 2008)
+                                     - 'Lyon' or 'BCAH98'       (Baraffe+ 1998)
+                                     - 'Pisa'                   (Tognelli+ 2011)
+                                     - 'Yale'                   (Spada+ 2013)
+                                     - 'Siess' or 'SDF00'       (Siess+ 2000)
+                                     - 'Padova'                 (Bressan+ 2012)
+                                     - 'ATON97'                 (D'Antona & Mazitelli 1997)
+                                     - 'ATON04'                 (Montalban+ 2004)
+                                     - 'ATON09                  (Di Criscienzo+ 2009)
+            
+            Returns:
+            --------
+            Isochrone object.
                      
         """
         self.is_loaded = False
@@ -29,8 +53,13 @@ class Isochrone(object):
             print "\nRequested age has incorrect units. Input age in Yrs.\n"
         else:
             self.age = age
-        self.feh = metallicity
-        self.afe = alpha_enhancement
+        self.feh   = metallicity
+        self.afe   = alpha_enhancement
+        self.brand = brand
+        
+        if self.brand == 'Dartmouth':
+            self.column = {'eep': 0, 'mass': 1, 'logg': 2, 'teff': 3, 
+                           'luminosity': 4, 'radius': 5}
     
         # isochrone location and file name
         feh_letter     = defs.plusMinus(self.feh)
