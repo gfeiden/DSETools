@@ -4,21 +4,53 @@
 class Star(object):
     
     def __init__(self, mass = None, radius = None, Teff = None, 
-                 luminosity = None, metallicity = (0.0, 0.0), 
+                 luminosity = None, logg = None, metallicity = (0.0, 0.0), 
                  Fe_H = (0.0, 0.0), A_Fe = (0.0, 0.0)):
-        """ New instance of star object """
+        """ New instance of star object 
+        
+            Creates an object with properties of a single star. Note that
+            all properties should be given as a tuple or list, where the 
+            first element is the value and the second element is the
+            uncertainty. Thus, mass = (1.0, 0.1) would imply a star with
+            1.0 +/- 0.1 Msun.
+            
+            Required Arguments:
+            -------------------
+            None
+            
+            Optional Arguments:
+            -------------------
+            mass         ::  mass of star in solar masses
+            
+            radius       ::  radius of star in solar radii
+            
+            Teff         ::  effective temperature of star in Kelvin
+            
+            luminosity   ::  luminosity of star in solar luminosities
+            
+            logg         ::  log(g), surface gravity, of the star in cgs
+            
+            metallicity  ::  [M/H] of star in dex
+            
+            Fe_H         ::  [Fe/H] of star in dex
+            
+            A_Fe         ::  [alpha/Fe] of star in dex
+            
+            Returns:
+            --------
+            Star object.
+        
+        """
         from ..utils.dtype import checkTuple
 
         self.mass = checkTuple(mass)
         self.radius = checkTuple(radius)
         self.Teff = checkTuple(Teff)
         self.luminosity = checkTuple(luminosity)
+        self.logg = checkTuple(logg)
         self.metallicity = checkTuple(metallicity)
         self.Fe_H = checkTuple(Fe_H)
         self.A_Fe = checkTuple(A_Fe)
-        
-        logg = None
-        self.logg = checkTuple(logg)
         
         self.properties = [self.mass, self.radius, self.Teff, self.luminosity, self.logg]
         self.pdict      = {'mass': 0, 'radius': 1, 'teff': 2, 'luminosity': 3, 'logg': 4}
@@ -39,3 +71,50 @@ class Star(object):
         fload = open(filename, 'r')
         pickle.load(fload)
         fload.close()
+        
+    def fitIsochrone(self, isochrone, fit_using = 'mass'):
+        """ Calculate residuals for star compared to a given isochrone 
+        
+            Required Arguments:
+            -------------------
+            isochrone  ::  isochrone object to compare against observations.
+            
+            Optional Arguments:
+            -------------------
+            fit_using  ::  stellar property to use as the fitting variable.
+                           options - 'mass', 'radius', 'teff', 'luminosity', 
+                                     'logg'
+                                     
+            Returns:
+            --------
+            comp_vars  ::  property in a given column for the following data
+            
+            theory     ::  theoretical predictions for given quantity
+            
+            error      ::  relative error for a given quantity
+            
+            nsigma     ::  number of standard deviations from observed value
+            
+        """
+        from ..analysis import isofit
+        return isofit.residuals(self, isochrone, independent = fit_using)
+        
+    def bestIsochrone(self, isochrone_brand = 'Dartmouth', fit_using = 'mass'):
+        """ Find the best fit isochrone for the star 
+        
+            Required Arguments:
+            -------------------
+            None
+            
+            Optional Arguments:
+            -------------------
+            isochrone_brand  ::  isochrone set
+            
+            fit_using        ::  independent variable used to fit data
+            
+            Returns:
+            --------
+        
+        """
+        from ..analysis import isofit
+        isofit.bestFit(self, isochrone_brand, independent = fit_using)

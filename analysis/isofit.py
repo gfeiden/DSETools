@@ -2,12 +2,14 @@
 #
 from scipy.interpolate import interp1d
 
-def isofit(system, isochrone, independent = 'mass'):
-    """ Fit components of a system to an isochrone. 
+def residuals(system, isochrone, independent = 'mass'):
+    """ Calculate residuals between components of a system and an isochrone. 
     
         This routine takes a system of stars and fits them to a stellar
         evolution isochrone. The fit is performed using a single independent
-        variable against a number of dependent variables.
+        variable against a number of dependent variables. From the fit, 
+        residuals are calculated as relative error and number of standard
+        deviations from known quantities.
         
         Required Arguments:
         -------------------
@@ -32,9 +34,8 @@ def isofit(system, isochrone, independent = 'mass'):
         errors      ::  list of signed relative errors for theoretical 
                         predictions for each star (one star per row).
         
-        gof         ::  list of chi squared value for goodness of fit of
-                        the isochrone to all stars in the system.
-    
+        nsigma      ::  list of residuals calculated as number of standard
+                        deviations from the known quantity. 
     """
     if system.N_components == 1:
         system.stars = [system]
@@ -83,10 +84,10 @@ def isofit(system, isochrone, independent = 'mass'):
             j = star.pdict[independent]
             obs = star.properties[star.pdict[prop]]
             
-            i = isochrone.column[prop]
+            i = isochrone.column[prop]            
             if prop in ['teff', 'radius', 'luminosity']:
                 icurve = interp1d(isochrone.isochrone[:, dcol], 
-                                  10.**isochrone.isochrone[:, i],
+                                  isochrone.isochrone[:, i],
                                   kind = 'linear')
             else:
                 icurve = interp1d(isochrone.isochrone[:, dcol], 
@@ -97,8 +98,10 @@ def isofit(system, isochrone, independent = 'mass'):
                 model = icurve(star.properties[j][0])
                 star_theory.append(float(model))
             except ValueError:
+                model = None
                 star_theory.append(None)
             except TypeError:
+                model = None
                 star_theory.append(None)
             
             try:
@@ -131,3 +134,7 @@ def isofit(system, isochrone, independent = 'mass'):
         #gof.append(column_total)
         
     return comp_vars, theory, errors, nsigma
+
+def bestFit(system, isochrone_brand, independent = 'mass'):
+    """ Finds the best fit isochrone for a system of stars """
+    return
