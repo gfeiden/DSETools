@@ -53,22 +53,22 @@ class Isochrone(object):
             print "\nRequested age has incorrect units. Input age in Yrs.\n"
         else:
             self.age = age
-        self.feh   = metallicity
-        self.afe   = alpha_enhancement
-        self.brand = brand
+        self.Fe_H    = metallicity
+        self.A_Fe    = alpha_enhancement
+        self.brand   = brand
         
         if self.brand == 'Dartmouth':
             self.column = {'eep': 0, 'mass': 1, 'logg': 2, 'teff': 3, 
                            'luminosity': 4, 'radius': 5}
     
         # isochrone location and file name
-        feh_letter     = defs.plusMinus(self.feh)
-        afe_letter     = defs.plusMinus(self.afe)
+        feh_letter     = defs.plusMinus(self.Fe_H)
+        afe_letter     = defs.plusMinus(self.A_Fe)
         
         iso_directory  = defs.iso_directory
-        feh_directory  = '{:s}{:03.0f}'.format(feh_letter, abs(self.feh*100.))
-        afe_directory  = 'a{:01.0f}'.format(abs(self.afe*10.))
-        afe_file       = '{:s}{:01.0f}'.format(afe_letter, abs(self.afe*10.))
+        feh_directory  = '{:s}{:03.0f}'.format(feh_letter, abs(self.Fe_H*100.))
+        afe_directory  = 'a{:01.0f}'.format(abs(self.A_Fe*10.))
+        afe_file       = '{:s}{:01.0f}'.format(afe_letter, abs(self.A_Fe*10.))
         self.directory = '{0}/{1}/{2}'.format(iso_directory, feh_directory,
                                               afe_directory)
         self.filename  = 'dmestar_{:05.0f}myr_feh{:s}_afe{:s}.iso'.format(
@@ -115,12 +115,12 @@ class Isochrone(object):
             print 'Choose either \'simple\' or \'complex\'.'
         else:
             self.isochrone = createIsochrone(age = self.age, 
-                                             metallicity = self.feh,
-                                             alpha_enhancement = self.afe, 
+                                             metallicity = self.Fe_H,
+                                             alpha_enhancement = self.A_Fe, 
                                              kind = kind)
             self.header    = createHeader(age = self.age, 
-                                          metallicity = self.feh,
-                                          alpha_abund = self.afe, 
+                                          metallicity = self.Fe_H,
+                                          alpha_abund = self.A_Fe, 
                                           N = len(self.isochrone))
         
     def loadIsochroneHeader(self):
@@ -141,7 +141,7 @@ class Isochrone(object):
     def addColor(self, system = ''):
         """ Perform color-Teff transformation using requested system """
         import teffcolor as tc
-        self.magnitudes = tc.transform(self.feh, self.afe, 
+        self.magnitudes = tc.transform(self.Fe_H, self.A_Fe, 
                                        self.isochrone[:, 2],
                                        self.isochrone[:, 4], 
                                        self.isochrone[:, 3],

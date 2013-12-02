@@ -52,8 +52,10 @@ class Star(object):
         self.Fe_H = checkTuple(Fe_H)
         self.A_Fe = checkTuple(A_Fe)
         
-        self.properties = [self.mass, self.radius, self.Teff, self.luminosity, self.logg]
-        self.pdict      = {'mass': 0, 'radius': 1, 'teff': 2, 'luminosity': 3, 'logg': 4}
+        self.properties = [self.mass, self.radius, self.Teff, self.luminosity, self.logg,
+                           self.Fe_H]
+        self.pdict      = {'mass': 0, 'radius': 1, 'teff': 2, 'luminosity': 3, 'logg': 4,
+                           '[Fe/H]': 5}
         self.N_components = 1
     
     def dump(self):

@@ -1,6 +1,7 @@
 #
 #
 from scipy.interpolate import interp1d
+from numpy import exp, pi, sqrt
 
 def residuals(system, isochrone, independent = 'mass', compare_to = []):
     """ Calculate residuals between components of a system and an isochrone. 
@@ -38,6 +39,8 @@ def residuals(system, isochrone, independent = 'mass', compare_to = []):
         
         nsigma       ::  list of residuals calculated as number of standard
                          deviations from the known quantity. 
+        
+        likelihood   ::  likelihood estimator for the given isochrone.
     """
     if system.N_components == 1:
         system.stars = [system]
@@ -78,6 +81,7 @@ def residuals(system, isochrone, independent = 'mass', compare_to = []):
         print "ERROR: Invalid independent variable.\n"
         return None
     
+    # Comparison to known observational properties
     theory = []    # theoretical predictions for observed stars
     errors = []    # relative errors (O - E)/E of theoretical predicitons
     nsigma = []    # unsigned relative errors for theoretical predictions
@@ -89,56 +93,76 @@ def residuals(system, isochrone, independent = 'mass', compare_to = []):
             j = star.pdict[independent]
             obs = star.properties[star.pdict[prop]]
             
-            i = isochrone.column[prop]            
+            i = isochrone.column[prop]
             if prop in ['teff', 'radius', 'luminosity']:
-                icurve = interp1d(isochrone.isochrone[:, dcol], 
-                                  isochrone.isochrone[:, i],
-                                  kind = 'linear')
+                y = 10.**isochrone.isochrone[:, i]
             else:
-                icurve = interp1d(isochrone.isochrone[:, dcol], 
-                                  isochrone.isochrone[:, i],
-                                  kind = 'linear')
+                y = isochrone.isochrone[:, i]
+                
+            if independent in ['teff', 'radius', 'luminosity']:
+                x = 10.**isochrone.isochrone[:, dcol]
+            else:
+                x = isochrone.isochrone[:, dcol]
+            
+            icurve = interp1d(x, y, kind = 'linear')
             
             try:
                 model = icurve(star.properties[j][0])
                 star_theory.append(float(model))
-            except ValueError:
+            except (ValueError, TypeError):
                 model = None
-                star_theory.append(None)
-            except TypeError:
-                model = None
-                star_theory.append(None)
+                star_theory.append(model)
             
             try:
                 star_error.append((obs[0] - model)/obs[0])
-            except ValueError:
-                star_error.append(None)
-            except TypeError:
+            except (ValueError, TypeError, ZeroDivisionError):
                 star_error.append(None)
             
             try:
                 star_sigma.append((obs[0] - model)/obs[1])
-            except ValueError:         
+            except (ValueError, TypeError, ZeroDivisionError):         
                 star_sigma.append(None)
-            except TypeError:
-                star_sigma.append(None)
+         
+        # comparison to known metallicity (convert to Z/X values)
+        star_theory.append(isochrone.Fe_H)
+        try:
+            zx_star = 10.**(star.Fe_H[0] - 1.636)
+            zx_iso  = 10.**(isochrone.Fe_H - 1.636)
+            star_error.append((zx_star - zx_iso)/zx_star)
+        except (ValueError, TypeError, ZeroDivisionError):
+            star_error.append(None)
+        
+        try:
+            zx_err  = 10.**(star.Fe_H[0] + star.Fe_H[1] - 1.636) - zx_star
+            star_sigma.append((zx_star - zx_iso)/zx_err)
+        except (ValueError, TypeError, ZeroDivisionError):
+            star_sigma.append(None)
             
         theory.append(star_theory)
         errors.append(star_error)
         nsigma.append(star_sigma)
     
-    ## compute goodness of fit
-    #gof = []
-    #for i in range(len(comp_vars)):
-        #column_total = 0.
-        #for row in chi_sq:
-            #try:
-                #column_total += row[i]
-            #except TypeError:
-                #column_total = None
-        #gof.append(column_total)
+    comp_vars.append('[Fe/H]')
+    
+    # likelihood estimator based on all specified properties.
+    chi_2 = 0.
+    pre   = 1.
+    for i in range(len(comp_vars)):
+        for row in nsigma:
+            try:
+                pre    = pre/(sqrt(2.*pi)*star.properties[star.pdict[comp_vars[i]]][1])
+            except (TypeError, ValueError, ZeroDivisionError):
+                continue
+            
+            try:
+                chi_2 += row[i]**2
+            except (TypeError, ValueError):
+                #print "WARNING: Skipping {0} in likelihood calculation".format(comp_vars[i])
+                continue
+    likelihood = pre*exp(-chi_2/2.)
         
-    return comp_vars, theory, errors, nsigma
+    return comp_vars, theory, errors, nsigma, likelihood
+
 
 def bestFit(system, isochrone_brand, fit_using = 'mass', compare_to = []):
     """ Finds the best fit isochrone for a system of stars 
