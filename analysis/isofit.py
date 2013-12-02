@@ -212,6 +212,10 @@ def bestFit(system, isochrone_brand, fit_using = 'mass', compare_to = [],
     age_range = defs.getAgeRange(isochrone_brand)
     
     # compute residuals/likelihoods for each isochrone in the model set
+    #
+    #-- Currently set up to output properties for a single star, though
+    #   binary likelihoods are calculated
+    #   Probably have to consider two output files or one long output?
     fit_data = []
     maximum  = 0.
     i = 0
