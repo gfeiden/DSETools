@@ -98,10 +98,11 @@ class Star(object):
             nsigma     ::  number of standard deviations from observed value
             
         """
-        from ..analysis import isofit
-        return isofit.residuals(self, isochrone, independent = fit_using)
+        from ..analysis.isofit import residuals
+        return residuals(self, isochrone, independent = fit_using)
         
-    def bestIsochrone(self, isochrone_brand = 'Dartmouth', fit_using = 'mass'):
+    def bestIsochrone(self, isochrone_brand = 'Dartmouth', fit_using = 'mass',
+                      return_all = False):
         """ Find the best fit isochrone for the star 
         
             Required Arguments:
@@ -116,7 +117,8 @@ class Star(object):
             
             Returns:
             --------
-        
+            
         """
-        from ..analysis import isofit
-        isofit.bestFit(self, isochrone_brand, independent = fit_using)
+        from ..analysis.isofit import bestFit
+        return bestFit(self, isochrone_brand, fit_using = fit_using, 
+                       return_all = return_all)

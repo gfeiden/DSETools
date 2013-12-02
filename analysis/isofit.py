@@ -3,6 +3,8 @@
 from scipy.interpolate import interp1d
 from numpy import exp, pi, sqrt
 
+__all__ = ['residuals', 'bestFit', 'saveLikelihoodData']
+
 def residuals(system, isochrone, independent = 'mass', compare_to = []):
     """ Calculate residuals between components of a system and an isochrone. 
     
@@ -41,6 +43,7 @@ def residuals(system, isochrone, independent = 'mass', compare_to = []):
                          deviations from the known quantity. 
         
         likelihood   ::  likelihood estimator for the given isochrone.
+        
     """
     if system.N_components == 1:
         system.stars = [system]
@@ -57,6 +60,7 @@ def residuals(system, isochrone, independent = 'mass', compare_to = []):
     else:
         comp_vars = compare_to.append(independent.lower())
     
+    # select independent variable
     if independent.lower() in ['mass', 'm']:
         independent = 'mass'
         dcol = isochrone.column[independent]
@@ -164,12 +168,18 @@ def residuals(system, isochrone, independent = 'mass', compare_to = []):
     return comp_vars, theory, errors, nsigma, likelihood
 
 
-def bestFit(system, isochrone_brand, fit_using = 'mass', compare_to = []):
+def bestFit(system, isochrone_brand, fit_using = 'mass', compare_to = [],
+            return_all = False):
     """ Finds the best fit isochrone for a system of stars 
     
         Given a stellar system (single star, binary, or multiple), this
         routine will find the stellar evolution isochrone that best fits
-        all N stars. 
+        all N stars. The "best fit" is determined by a maximum likelihood
+        method, where the statistical likelihood is computed for each 
+        isochrone.
+        
+        Note, to return likelihood for every isochrone, set return_all 
+        flag to True.
         
         Required Arguments:
         -------------------
@@ -181,28 +191,75 @@ def bestFit(system, isochrone_brand, fit_using = 'mass', compare_to = []):
         -------------------
         fit_using        ::  independent variable for fitting data to models.
         
-        compare_to       ::  variables to perform comparison over
+        compare_to       ::  variables to perform comparison over.
         
         Returns:
         --------
-    
+        fit_data[row]    ::  properties of the best fit isochrone.
+        
+        row              ::  (optional) row in fit_data that contains data
+                             for the best fit isochrone.
+        
+        fit_data         ::  (optional) likelihood data for each individual 
+                             isochrone.
+        
     """
-    from math    import sqrt
     from ..model import isochrone, defs
     
+    # get properties of the model set
     feh_range = defs.getFeHRange(isochrone_brand)
     afe_range = defs.getAFeRange(isochrone_brand)
     age_range = defs.getAgeRange(isochrone_brand)
     
+    # compute residuals/likelihoods for each isochrone in the model set
+    fit_data = []
+    maximum  = 0.
+    i = 0
+    row = i
     for afe in afe_range:
         for feh in feh_range:
             for age in age_range:
+                #print "Working on:", age, feh, afe
                 iso = isochrone.Isochrone(age*1.e6, feh, alpha_enhancement = afe,
                                           brand = isochrone_brand)
                 resids = residuals(system, iso, independent = fit_using, 
                                    compare_to = compare_to)
-                rmsd   = math.sqrt()
-                ## Have to find RMSD for each isochrone over all computed 
-                ## variables
+                fit_data.append([age/1.e3, feh, afe, resids[4], resids[1][0][0],
+                                 resids[1][0][1], resids[1][0][2], resids[1][0][3]])
+                if resids[4] > maximum:
+                    maximum = resids[4]
+                    row = i
+                i += 1
+            #-- age loop
+        #-- Fe/H loop
+    #-- A/Fe loop
     
-    return 0
+    if return_all:
+        return row, fit_data
+    else:
+        return fit_data[row]
+    
+
+def saveLikelihoodData(data, filename = 'likelihood.dat'):
+    """ Write likelihood data to a file 
+    
+    """
+    file_out = open(filename, 'w')
+    
+    # write file header
+    file_out.write('#\n# Best fit on line {:.0f} \n#\n'.format(data[0] + 3))
+    
+    # write data to file (add space between metallicities)
+    feh = data[1][0][1]
+    for line in data[1]:
+        if line[1] != feh:
+            file_out.write('\n')
+            feh = line[1]
+        try:
+            s = '{:6.3f}{:7.1f}{:5.1f}{:16.4e}{:14.6f}{:14.6f}{:14.6f}{:14.6f}\n'.format(
+                line[0], line[1], line[2], line[3], line[4], line[5], line[6],
+                line[7])
+            file_out.write(s)
+        except ValueError:
+            continue
+    
