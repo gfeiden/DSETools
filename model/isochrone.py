@@ -51,30 +51,45 @@ class Isochrone(object):
         # isochrone properties
         if age < 1.e6:
             print "\nRequested age has incorrect units. Input age in Yrs.\n"
-        else:
-            self.age = age
+            
+        self.age     = age
         self.Fe_H    = metallicity
         self.A_Fe    = alpha_enhancement
-        self.brand   = brand
+        self.brand   = brand        
+        self.column  = defs.getIsochroneCols(self.brand)
         
-        if self.brand == 'Dartmouth':
-            self.column = {'eep': 0, 'mass': 1, 'logg': 2, 'teff': 3, 
-                           'luminosity': 4, 'radius': 5}
-    
-        # isochrone location and file name
-        feh_letter     = defs.plusMinus(self.Fe_H)
-        afe_letter     = defs.plusMinus(self.A_Fe)
+        # locate isochrone directory
+        iso_directory  = defs.getModelDirectory(brand) + '/iso'
         
-        iso_directory  = defs.iso_directory
-        feh_directory  = '{:s}{:03.0f}'.format(feh_letter, abs(self.Fe_H*100.))
-        afe_directory  = 'a{:01.0f}'.format(abs(self.A_Fe*10.))
-        afe_file       = '{:s}{:01.0f}'.format(afe_letter, abs(self.A_Fe*10.))
-        self.directory = '{0}/{1}/{2}'.format(iso_directory, feh_directory,
-                                              afe_directory)
-        self.filename  = 'dmestar_{:05.0f}myr_feh{:s}_afe{:s}.iso'.format(
+        # generate location and name of isochrone files
+        if self.brand in ['Dartmouth', 'DMESTAR']:
+            feh_letter     = defs.plusMinus(self.Fe_H)
+            afe_letter     = defs.plusMinus(self.A_Fe)
+            
+            feh_directory  = '{:s}{:03.0f}'.format(feh_letter, abs(self.Fe_H*100.))
+            afe_directory  = 'a{:01.0f}'.format(abs(self.A_Fe*10.))
+            afe_file       = '{:s}{:01.0f}'.format(afe_letter, abs(self.A_Fe*10.))
+        
+            self.directory = '{0}/{1}/{2}'.format(iso_directory, feh_directory,
+                                                  afe_directory)
+            self.filename  = 'dmestar_{:05.0f}myr_feh{:s}_afe{:s}.iso'.format(
                                                                    self.age/1.e6,
                                                                    feh_directory,
                                                                    afe_file)
+            self.comm_rows = 0
+        elif self.brand in ['Lyon', 'BCAH98']:
+            age            = 10.0**round(np.log10(self.age), 1)
+            amlt_directory = 'a19'
+            self.directory = '{0}/{1}'.format(iso_directory, amlt_directory)
+            self.filename  = 'bcah98_{:05.0f}_mh00_amlt{:s}.iso'.format(
+                                                               age/1.e6,
+                                                               amlt_directory[1:])
+            self.comm_rows = 4
+        else:
+            print 'ERROR: Incorrect isochrone brand specified.'
+            self.directory = ''
+            self.filename  = ''
+                  
         self.filepath  = '{0}/{1}'.format(self.directory, self.filename)
         
         # check if isochrone file exists
@@ -84,28 +99,58 @@ class Isochrone(object):
         except:
             self.exists = False
     
+    
     def loadIsochrone(self):
         """ Load isochrone from file 
         
-        This routine loads numerical data from the specified isochrone 
-        file. Header information is read using readIsochroneHeader() and
-        is saved in a variable separate from the rest of the isochrone 
-        information.       
+            This routine loads numerical data from the specified isochrone 
+            file. Header information is read using readIsochroneHeader() 
+            and is saved in a variable separate from the rest of the isochrone 
+            information.
+            
+            Required Arguments:
+            -------------------
+            None
+            
+            
+            Optional Arguments:
+            -------------------
+            None
+            
+            
+            Returns:
+            --------
+            Properties of isochrone object called 'isochrone' and 'header'.
+            
         """
         if self.exists == False:
             print '\nIsochrone does not exist. Please create a new isochrone.\n'
         else:
             try:
                 self.loadIsochroneHeader()
-                self.isochrone = np.genfromtxt(self.filepath, comments='#')
+                self.isochrone = np.genfromtxt(self.filepath, comments = '#', 
+                                               skiprows = self.comm_rows)
                 self.is_loaded = True
-            except:
+                self.unlogColumns()
+            except TypeError:
                 print 'ERROR: Isochrone load failed.\n'
                 self.is_loaded = False
+                
+    def unlogColumns(self):
+        """ Unlog columns containing logged quantities 
+        
+        """
+        logged = defs.getLoggedQuantities(self.brand) 
+        for prop in logged:
+            i = self.column[prop]
+            self.isochrone[:, i] = 10.0**self.isochrone[:, i]
+        #print '\nQuantities successfully unlogged.\n'
+    
     
     def returnIsochrone(self):
         """ Return isochrone numerical data """
         return self.isochrone
+    
     
     def generateIsochrone(self, kind = 'simple'):
         """ Create a new isochrone from mass track library """
@@ -122,22 +167,29 @@ class Isochrone(object):
                                           metallicity = self.Fe_H,
                                           alpha_abund = self.A_Fe, 
                                           N = len(self.isochrone))
-        
+    
+    
     def loadIsochroneHeader(self):
         """ Read isochrone file header """
         import fileinput as fi
         self.header_loaded = True
-        self.header = [line for line in fi.input(self.filepath) if line[0] == '#']
+        if self.comm_rows == 0:
+            self.header = [line for line in fi.input(self.filepath) if line[0] == '#']
+        else:
+            self.header = []
+    
     
     def returnIsochroneHeader(self):
         """ Return isochrone header information """
         if not self.header_loaded:
             self.loadIsochroneHeader()
         return self.header
-        
+    
+    
     def parseIsochroneHeader(self):
         """ Parse data in isochrone header """
-        
+    
+    
     def addColor(self, system = ''):
         """ Perform color-Teff transformation using requested system """
         import teffcolor as tc
@@ -148,12 +200,17 @@ class Isochrone(object):
                                        len(self.isochrone))
         self.isochrone = np.concatenate((self.isochrone, self.magnitudes), axis=1)
         self.addMagsToHeader()
-        
+    
+    
     def addMagsToHeader(self):
         """ Add magnitude designation to header information """
-        s = '{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}\n'.format('B', 'V', 'R', 'I', 'V', 'I', 'J', 'H', 'K')
+        s = '{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}{:^10s}\n'.format('B', 
+                                                                             'V', 'R', 'I', 
+                                                                             'V', 'I', 'J', 
+                                                                             'H', 'K')
         self.header[-1] = self.header[-1].rstrip()
         self.header[-1] += s
+    
     
     def writeIsochrone(self):
         """ Write out isochrone data with magnitudes to a file """
@@ -168,6 +225,7 @@ class Isochrone(object):
             fout.write(line)
         np.savetxt(fout, self.isochrone, fmt='%10.6f')
         fout.close()
+    
     
     def plotIsochrone():
         """ Plot different properties of an isochrone """

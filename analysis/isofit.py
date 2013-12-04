@@ -97,18 +97,12 @@ def residuals(system, isochrone, independent = 'mass', compare_to = []):
             j = star.pdict[independent]
             obs = star.properties[star.pdict[prop]]
             
-            i = isochrone.column[prop]
-            if prop in ['teff', 'radius', 'luminosity']:
-                y = 10.**isochrone.isochrone[:, i]
-            else:
-                y = isochrone.isochrone[:, i]
-                
-            if independent in ['teff', 'radius', 'luminosity']:
-                x = 10.**isochrone.isochrone[:, dcol]
-            else:
-                x = isochrone.isochrone[:, dcol]
-            
-            icurve = interp1d(x, y, kind = 'linear')
+            try:
+                i = isochrone.column[prop]
+            except KeyError:
+                continue
+            icurve = interp1d(isochrone.isochrone[:, dcol], 
+                              isochrone.isochrone[:, i], kind = 'linear')
             
             try:
                 model = icurve(star.properties[j][0])
@@ -155,12 +149,12 @@ def residuals(system, isochrone, independent = 'mass', compare_to = []):
         for row in nsigma:
             try:
                 pre    = pre/(sqrt(2.*pi)*star.properties[star.pdict[comp_vars[i]]][1])
-            except (TypeError, ValueError, ZeroDivisionError):
+            except (TypeError, ValueError, ZeroDivisionError, IndexError):
                 continue
             
             try:
                 chi_2 += row[i]**2
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, IndexError):
                 #print "WARNING: Skipping {0} in likelihood calculation".format(comp_vars[i])
                 continue
     likelihood = pre*exp(-chi_2/2.)
@@ -224,7 +218,7 @@ def bestFit(system, isochrone_brand, fit_using = 'mass', compare_to = [],
         for feh in feh_range:
             for age in age_range:
                 #print "Working on:", age, feh, afe
-                iso = isochrone.Isochrone(age*1.e6, feh, alpha_enhancement = afe,
+                iso = isochrone.Isochrone(age, feh, alpha_enhancement = afe,
                                           brand = isochrone_brand)
                 resids = residuals(system, iso, independent = fit_using, 
                                    compare_to = compare_to)
