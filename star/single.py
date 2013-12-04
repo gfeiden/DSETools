@@ -3,7 +3,7 @@
 
 class Star(object):
     
-    def __init__(self, mass = None, radius = None, Teff = None, 
+    def __init__(self, name = None, mass = None, radius = None, Teff = None, 
                  luminosity = None, logg = None, metallicity = (0.0, 0.0), 
                  Fe_H = (0.0, 0.0), A_Fe = (0.0, 0.0)):
         """ New instance of star object 
@@ -20,6 +20,8 @@ class Star(object):
             
             Optional Arguments:
             -------------------
+            name         ::  name of the star
+            
             mass         ::  mass of star in solar masses
             
             radius       ::  radius of star in solar radii
@@ -42,7 +44,8 @@ class Star(object):
         
         """
         from ..utils.dtype import checkTuple
-
+        
+        self.name = name
         self.mass = checkTuple(mass)
         self.radius = checkTuple(radius)
         self.Teff = checkTuple(Teff)

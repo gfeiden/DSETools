@@ -15,7 +15,7 @@ class MassTrack(object):
         feh_letter = defs.plusMinus(self.feh)
         afe_letter = defs.plusMinus(self.afe)
         
-        track_directory = defs.trk_directory
+        track_directory = defs.getModelDirectory('Dartmouth') + '/trk'
         feh_directory   = '{:s}{:03.0f}'.format(feh_letter, abs(self.feh*100.))
         afe_directory   = 'a{:01.0f}'.format(abs(self.afe*10.))
         

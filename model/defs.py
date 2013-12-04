@@ -5,7 +5,8 @@ __all__ = ['plusMinus', 'getModelDirectory', 'getAgeRange', 'getMassRange',
 
 # Dictionaries and data associated with various stellar evolution models
 shell_env  = {'Dartmouth': 'DSEP_MODEL_PATH',
-              'Lyon'     : 'BCAH_MODEL_PATH'
+              'Lyon'     : 'BCAH_MODEL_PATH',
+              'Pisa'     : 'PISA_MODEL_PATH'
              }
 
 age_range  = {'Dartmouth': (1.0e9, 13.0e9, 2.5e8), 
@@ -28,7 +29,7 @@ feh_range  = {'Dartmouth': [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3,
               'Lyon'     : [0.0]
              }
               
-afe_range  = {'Dartmouth': [0.0], #, 0.2, 0.4], 
+afe_range  = {'Dartmouth': [0.0, 0.2, 0.4], 
               'Lyon'     : [0.0],
               'Pisa'     : [0.0]
              }
@@ -127,8 +128,10 @@ def getModelDirectory(brand):
     from os import getenv
     return getenv(shell_env[brand])
 
+
 def getIsochroneCols(brand):
     return iso_column[brand]
+
 
 def getLoggedQuantities(brand):
     return log_values[brand]

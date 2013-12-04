@@ -1,10 +1,9 @@
 #
 #
-from . import masstrack as dtrk
+from . import masstrack as mtrk
 from . import defs
 
-def createIsochrone(age = None, metallicity = None, alpha_enhancement = None, 
-                    kind = 'simple'):
+def createIsochrone(isochrone, kind = 'simple'):
     """ Create isochrone from mass track library 
     
         Generate a new isochrone for a given age, metallicity, and alpha
@@ -26,7 +25,7 @@ def createIsochrone(age = None, metallicity = None, alpha_enhancement = None,
                                         complex - use EEP formalism 
     """
     # Error check to ensure arguments are properly declared
-    if None in [age, metallicity, alpha_enhancement]:
+    if None in [isochrone.age, isochrone.Fe_H, isochrone.A_Fe]:
         print '\nNot all isochrone properties were specified. Please delcare:'
         print '\t- Age (in yrs)\n\t- [Fe/H] (in dex)\n\t- [a/Fe] (in dex)\n'
     
@@ -34,48 +33,46 @@ def createIsochrone(age = None, metallicity = None, alpha_enhancement = None,
         print '\nIsochrone generation type not properly declared.\n'
     
     # determine whether an interpolation has to be performed first
-    feh = metallicity
-    afe = alpha_enhancement
-    if feh not in dlib.feh_list:
+    if isochrone.Fe_H not in defs.getFeHRange(isochrone.brand):
         feh_in_grid = False
     else:
         feh_in_grid = True
-    if afe not in dlib.afe_list:
+        
+    if isochrone.A_Fe not in defs.getAFeRange(isochrone.brand):
         afe_in_grid = False
     else:
         afe_in_grid = True
     
     if False in [feh_in_grid, afe_in_grid]:
-        interpolateMassTracks(metallicity = feh,
-                              alpha_abund = afe,
-                              skip_feh    = feh_in_grid, 
-                              skip_afe    = afe_in_grid)
+        interpolateMassTracks(feh_new  = isochrone.Fe_H,
+                              afe_new  = isochrone.A_Fe,
+                              skip_feh = feh_in_grid, 
+                              skip_afe = afe_in_grid)
     else:
         pass
     
     if kind == 'simple':
-        isochrone = generateSimpleIsochrone(age, feh, afe)
+        generateSimpleIsochrone(isochrone)
     else:
-        isochrone = generateComplexIsochrone(age, feh, afe)
+        generateComplexIsochrone(isochrone)
+        
     
-    return isochrone
-    
-def createHeader(age, metallicity, alpha_abund, N):
+def createHeader(isochrone, N):
     """ Create the header for a new isochrone """
     Z_sun  = 0.018837
     Y      = 0.
     amlt   = 1.938
-    Z      = Z_sun*10.**metallicity
+    Z      = Z_sun*10.0**isochrone.Fe_H
     header = ['#MIX-LEN  Y       Z           [Fe/H] [a/Fe]\n']
     values = '# {:6.4f}{:8.4f} {:8.4e}   {:3.2f}{:6.2f}\n'.format(amlt, Y, Z,
-                                                                 metallicity,
-                                                                 alpha_abund)
+                                                              isochrone.Fe_H,
+                                                              isochrone.A_Fe)
     header.append(values)
-    header.append('#AGE={:8.0f} EEPS={:4.0f}\n'.format(age/1.e6, N))
+    header.append('#AGE={:8.0f} EEPS={:4.0f}\n'.format(isochrone.age/1.e6, N))
     header.append('#EEP  MASS      Log G     Log Teff    Log(L/Lo)    Log(R/Ro)\n')
-    return header
+    isochrone.header = header
 
-def generateSimpleIsochrone(age, metallicity, alpha_abund):
+def generateSimpleIsochrone(isochrone):
     """ Create new isochrone from given age, metallicity, and alpha 
         enhancement. 
         
@@ -93,13 +90,14 @@ def generateSimpleIsochrone(age, metallicity, alpha_abund):
     
     iso_cols = {0: 3, 1: 2, 2: 4, 3: 5}
     
-    isochrone = empty([len(dlib.mass_list), 6])  # create an empty array
+    mass_list = defs.getMassRange(isochrone.brand)
+    new_iso   = empty([len(mass_list), 6])  # create an empty array
     
     j   = -1
     k   = 0
     eep = 0
-    for mass in dlib.mass_list:
-        track = dtrk.MassTrack(mass, metallicity, alpha_enhancement = alpha_abund)
+    for mass in mass_list:
+        track = mtrk.MassTrack(mass, isochrone.Fe_H, alpha_enhancement = isochrone.A_Fe)
         track.loadTrack(peel = False)
         
         try:
@@ -116,19 +114,19 @@ def generateSimpleIsochrone(age, metallicity, alpha_abund):
             pass
                     
         j += 1
-        isochrone[j, 0] = j
-        isochrone[j, 1] = mass
+        new_iso[j, 0] = j
+        new_iso[j, 1] = mass
         for i in range(4):
             curve = interp1d(track.track[:, 0], track.track[:, i + 1])
             
             try:
-                isochrone[j, iso_cols[i]] = curve(age)
+                new_iso[j, iso_cols[i]] = curve(isochrone.age)
             except ValueError:
                 j += -1
                 k += 1
                 break
-                
-    return delete(isochrone, [len(isochrone) - x - 1 for x in range(k)], 0)
+    isochrone.isochrone = delete(new_iso, [len(new_iso) - x - 1 for x in range(k)], 0)
+
 
 def interpolateMassTracks(feh_new = None, afe_new = None, skip_feh = False,
                           skip_afe = True):
@@ -137,7 +135,7 @@ def interpolateMassTracks(feh_new = None, afe_new = None, skip_feh = False,
     #import utils.fortinterp as fint
     import os
     if not skip_feh:
-        feh_list = dlib.feh_list.insert(0, feh_new)
+        feh_list = defs.feh_list.insert(0, feh_new)
         feh_list.sort()
         i = feh_list.index(feh_new)
         if i == 0:
@@ -150,7 +148,7 @@ def interpolateMassTracks(feh_new = None, afe_new = None, skip_feh = False,
         feh_list = [feh_list[i - 1], feh_list[i + 1]]
         for mass in dlib.mass_list:
             for feh in feh_list:
-                trk = dtrk.MassTrack(mass, feh)
+                trk = mtrk.MassTrack(mass, feh)
                 files.append(trk.filepath)
             del trk
             try: 

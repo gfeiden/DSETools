@@ -154,19 +154,13 @@ class Isochrone(object):
     
     def generateIsochrone(self, kind = 'simple'):
         """ Create a new isochrone from mass track library """
-        from isogen import createIsochrone, createHeader
+        from .isogen import createIsochrone, createHeader
         if kind not in ['simple', 'complex']:
             print '\nType of isochrone generation specified is incorrect.'
             print 'Choose either \'simple\' or \'complex\'.'
         else:
-            self.isochrone = createIsochrone(age = self.age, 
-                                             metallicity = self.Fe_H,
-                                             alpha_enhancement = self.A_Fe, 
-                                             kind = kind)
-            self.header    = createHeader(age = self.age, 
-                                          metallicity = self.Fe_H,
-                                          alpha_abund = self.A_Fe, 
-                                          N = len(self.isochrone))
+            createIsochrone(self, kind = kind)
+            createHeader(self, N = len(self.isochrone))
     
     
     def loadIsochroneHeader(self):
