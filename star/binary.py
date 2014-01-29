@@ -4,7 +4,7 @@ from ..utils.dtype import checkTuple
 
 class Binary(object):
     
-    def __init__(self, star1, star2, period):
+    def __init__(self, star1, star2, period=(None, None), Teff_diff = (None, None)):
         """ Instance of binary system from two star objects. 
         
             Creates a binary star system from two single star objects 
@@ -30,6 +30,7 @@ class Binary(object):
             Binary star object.
             
         """
+        from numpy import sqrt
         self.stars = [star1, star2]
         self.period = checkTuple(period)
         self.N_components = star1.N_components + star2.N_components
@@ -37,24 +38,33 @@ class Binary(object):
         try:
             self.total_mass = star1.mass[0] + star2.mass[0]
             self.mass_ratio = star2.mass[0]/star1.mass[0]
+            self.mrat_error = self.mass_ratio*sqrt((star2.mass[1]/star2.mass[0])**2 +
+                                                   (star1.mass[1]/star1.mass[0])**2)
+            self.mtot_error = star1.mass[1] + star2.mass[1]
         except TypeError:
             print "WARNING: One or more masses not declared.\n"
             self.total_mass = None
             self.mass_ratio = None
 
         try:
-            self.total_rad  = star1.radius[0] + star2.radius[0]
+            self.rad_sum    = star1.radius[0] + star2.radius[0]
             self.rad_ratio  = star2.radius[0]/star1.radius[0]
+            self.rsum_error = star1.radius[1] + star2.radius[1]
         except TypeError:
             print "WARNING: One or more radii not declared.\n"
-            self.total_rad  = None
+            self.rad_sum    = None
             self.rad_ratio  = None
 
         try:
             self.temp_ratio = star2.Teff[0]/star1.Teff[0]
+            self.trat_error = self.temp_ratio*sqrt((star2.Teff[1]/star2.Teff[0])**2 +
+                                                   (star1.Teff[1]/star1.Teff[0])**2)
         except TypeError:
             print "WARNING: One or more Teffs not declared.\n"
             self.temp_ratio = None
+            self.trat_error = None
+        
+        self.Teff_diff = checkTuple(Teff_diff)
 
         try:
             self.total_lum  = star1.luminosity[0] + star2.luminosity[0]

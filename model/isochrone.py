@@ -59,10 +59,15 @@ class Isochrone(object):
         self.column  = defs.getIsochroneCols(self.brand)
         
         # locate isochrone directory
-        iso_directory  = defs.getModelDirectory(brand) + '/iso'
+        iso_directory  = defs.getModelDirectory(brand)
         
         # generate location and name of isochrone files
-        if self.brand in ['Dartmouth', 'DMESTAR']:
+        if self.brand in ['BAton']:
+            self.directory = iso_directory
+            self.filename  = 'baton_{:07.1f}myr_Z02.iso'.format(self.age/1.e6)
+            
+            self.comm_rows = 0
+        elif self.brand in ['Dartmouth', 'DMESTAR']:
             feh_letter     = defs.plusMinus(self.Fe_H)
             afe_letter     = defs.plusMinus(self.A_Fe)
             
@@ -72,19 +77,54 @@ class Isochrone(object):
         
             self.directory = '{0}/{1}/{2}'.format(iso_directory, feh_directory,
                                                   afe_directory)
-            self.filename  = 'dmestar_{:05.0f}myr_feh{:s}_afe{:s}.iso'.format(
+            self.filename  = 'dmestar_{:07.1f}myr_feh{:s}_afe{:s}.iso'.format(
                                                                    self.age/1.e6,
                                                                    feh_directory,
                                                                    afe_file)
             self.comm_rows = 0
-        elif self.brand in ['Lyon', 'BCAH98']:
+        elif self.brand in ['DSEP', 'DSEP08']:
+            feh_letter     = defs.plusMinus(self.Fe_H)
+            afe_letter     = defs.plusMinus(self.A_Fe)
+            
+            feh_directory  = '{:s}{:03.0f}'.format(feh_letter, abs(self.Fe_H*100.))
+            afe_directory  = 'a{:01.0f}'.format(abs(self.A_Fe*10.))
+            afe_file       = '{:s}{:01.0f}'.format(afe_letter, abs(self.A_Fe*10.))
+            
+            self.directory = '{0}/{1}/{2}'.format(iso_directory, feh_directory,
+                                                  afe_directory)
+            self.filename  = 'dsep08_{:07.1f}myr_feh{:s}_afe{:s}.iso'.format(
+                                                                   self.age/1.e6,
+                                                                   feh_directory,
+                                                                   afe_file)
+            self.comm_rows = 0
+        elif self.brand in ['Lyon', 'BCAH98', 'Lyon10', 'Lyon19']:
             age            = 10.0**round(np.log10(self.age), 1)
-            amlt_directory = 'a19'
+            if self.brand == 'Lyon10':
+                amlt_directory = 'a10'
+            else:
+                amlt_directory = 'a19'
             self.directory = '{0}/{1}'.format(iso_directory, amlt_directory)
-            self.filename  = 'bcah98_{:05.0f}_mh00_amlt{:s}.iso'.format(
-                                                               age/1.e6,
-                                                               amlt_directory[1:])
+            self.filename  = 'bcah98_{:07.1f}myr_mh00_amlt{:s}.iso'.format(
+                                                                    age/1.e6,
+                                                                    amlt_directory[1:])
             self.comm_rows = 4
+        elif self.brand in ['Pisa']:
+            Z = defs.pisaZMap[self.Fe_H]
+            Y = 0.2485 + 2.0*Z
+            
+            z_directory    = 'Z{:7.5f}_Y{:5.3f}0_XD2E5_ML1.68_AS05'.format(Z, Y)
+            self.directory = '{0}/{1}'.format(iso_directory, z_directory)
+            self.filename  = 'ISO_A{:05.0f}_Z{:7.5f}_Y{:5.3f}0_XD2E5_ML1.68_AS05.DAT'.format(
+                              age/1.0e6, Z, Y)
+            self.comm_rows = 0
+        elif self.brand in ['Yale', 'Yale13']:
+            X, Z           = defs.yaleXZMap[self.Fe_H]
+            feh_letter     = defs.plusMinus(self.Fe_H)
+            feh_directory  = '{:s}{:03.0f}'.format(feh_letter, abs(self.Fe_H*100.))
+            self.directory = '{0}/{1}'.format(iso_directory, feh_directory)
+            self.filename  = '{:07.1f}myr_X0p{:05.0f}_Z0p{:05.0f}_A1p875.iso'.format(
+                               age/1.0e6, X*1.e5, Z*1.e5)
+            self.comm_rows = 0
         else:
             print 'ERROR: Incorrect isochrone brand specified.'
             self.directory = ''
@@ -135,6 +175,29 @@ class Isochrone(object):
             except TypeError:
                 print 'ERROR: Isochrone load failed.\n'
                 self.is_loaded = False
+            
+            # for isochrones with no radius, only logg, create a radius column
+            GMsun = 1.32712440041e26
+            Rsun  = 6.956e10
+            Lsun  = 3.839e33
+            sig   = 5.6704e-5
+            if self.brand in ['DSEP', 'DSEP08', 'Lyon10', 'BAton']:
+                m_indx = self.column['mass']
+                g_indx = self.column['logg']
+                radius = np.sqrt(GMsun*self.isochrone[:,m_indx]/10.0**self.isochrone[:,g_indx])/Rsun
+                self.isochrone = np.column_stack((self.isochrone, radius))
+                self.column['radius'] = len(self.isochrone[0]) - 1
+            elif self.brand in ['Pisa']:
+                T_indx = self.column['teff']
+                L_indx = self.column['luminosity']
+                
+                # get radius from Stefan-Boltzmann Law
+                radius = np.sqrt(self.isochrone[:,L_indx]*Lsun / 
+                           (4.0*np.pi*sig*(self.isochrone[:,T_indx])**4))/Rsun
+                self.isochrone = np.column_stack((self.isochrone, radius))
+                self.column['radius'] = len(self.isochrone[0]) - 1
+            else:
+                pass
                 
     def unlogColumns(self):
         """ Unlog columns containing logged quantities 

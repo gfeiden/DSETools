@@ -1,9 +1,140 @@
 #
 #
 from scipy.interpolate import interp1d
-from numpy import exp, pi, sqrt
+import numpy as np
 
-__all__ = ['residuals', 'bestFit', 'saveLikelihoodData']
+__all__ = ['resids', 'residuals', 'bestFit', 'saveLikelihoodData']
+
+def resids(system, isochrone, output_file = None, mass_grid_space = 0.001):
+    """ Calculate residuals between components of a system and an isochrone.
+    
+        This routine takes a system of stars and calculates the goodness
+        of fit coefficient at each mass point along the isochrone. The fit
+        is performed over all stellar properties at every mass point for
+        some specified mass spacing along the isochrone. Residuals are 
+        computed as relative error and number of standard deviations from
+        known (specified) quantities.
+        
+        Required Arguments
+        -------------------
+        system       ::  stellar system object, either a star, binary, etc.
+         
+        isochrone    ::  stellar evolution isochrone object
+        
+    """
+    if system.N_components == 1:
+        system.stars = [system]
+    
+    # check if isochrone is load, if not, load it.
+    if isochrone.is_loaded:
+        pass
+    else:
+        isochrone.loadIsochrone()
+    
+    # get isochrone properties
+    mass_col = isochrone.column['mass']
+    teff_col = isochrone.column['teff']
+    lumi_col = isochrone.column['luminosity']
+    radi_col = isochrone.column['radius']
+    
+    mass_r = isochrone.isochrone[:, mass_col]
+    masses = np.arange(min(mass_r), max(mass_r) - mass_grid_space, mass_grid_space)
+    
+    # interpolate masses onto isochrone for each model property (teff, radius, luminosity)
+    icurve = interp1d(isochrone.isochrone[:, mass_col], isochrone.isochrone[:, teff_col])
+    i_teff = icurve(masses)
+    
+    icurve = interp1d(isochrone.isochrone[:, mass_col], isochrone.isochrone[:, lumi_col])
+    i_lumi = icurve(masses)
+    
+    icurve = interp1d(isochrone.isochrone[:, mass_col], isochrone.isochrone[:, radi_col])
+    i_radi = icurve(masses)
+    
+    # compute residual at each point along the isochrone for each star
+    for star in system.stars:
+
+        try:
+            mass_resid = (star.mass[0] - masses)/star.mass[0]
+            mass_resid = np.column_stack((masses, mass_resid))
+        except (ValueError, TypeError):
+            mass_resid = None
+        
+        try:
+            radius_resid = (star.radius[0] - i_radi)/star.radius[0]
+            radius_resid = np.column_stack((i_radi, radius_resid))
+        except (ValueError, TypeError):
+            radius_resid = None
+        
+        try:
+            teff_resid = (star.Teff[0] - i_teff)/star.Teff[0]
+            teff_resid = np.column_stack((i_teff, teff_resid))
+        except (ValueError, TypeError):
+            teff_resid = None
+        
+        try:
+            lumin_resid = (star.luminosity[0] - i_lumi)/star.luminosity[0]
+            lumin_resid = np.column_stack((i_lumi, lumin_resid))
+        except (ValueError, TypeError):
+            lumin_resid = None
+        
+        try:
+            mass_nusig = (masses - star.mass[0])/star.mass[1]
+        except (ValueError, TypeError):
+            mass_nusig = None
+        
+        try:
+            radius_nusig = (i_radi - star.radius[0])/star.radius[1]
+        except (ValueError, TypeError):
+            radius_nusig = None
+            
+        try:
+            teff_nusig = (i_teff - star.Teff[0])/star.Teff[1]
+        except (ValueError, TypeError):
+            teff_nusig = None
+        
+        try:
+            lumin_nusig = (i_lumi - star.luminosity[0])/star.luminosity[1]
+        except (ValueError, TypeError):
+            lumin_nusig = None
+        
+        # compute goodness of fit coefficient for each mass point
+        if system.stars.index(star) == 1:
+            i_teff_diff = star_resids[prim_bstfit, 4] - i_teff
+            try:
+                tdiff_resid = (system.Teff_diff[0] - i_teff_diff)/system.Teff_diff[0]
+                tdiff_resid = np.column_stack((i_teff_diff, tdiff_resid))
+                tdiff_nusig = (system.Teff_diff[0] - i_teff_diff)/system.Teff_diff[1]
+            except (ValueError, TypeError):
+                tdiff_resid = None
+            RMSD = np.sqrt((mass_nusig**2 + radius_nusig**2 + tdiff_nusig**2)/3.)
+        else:
+            tdiff_resid = None
+            RMSD = np.sqrt((mass_nusig**2 + radius_nusig**2 + teff_nusig**2)/3.)
+        
+        # start stacking columns: prop, err, n_sigma
+        try:
+            star_resids = np.column_stack((star_resids, mass_resid))
+        except NameError:
+            star_resids = mass_resid
+            
+        star_resids = np.column_stack((star_resids, radius_resid))
+        star_resids = np.column_stack((star_resids, teff_resid))
+        if tdiff_resid != None:
+            star_resids = np.column_stack((star_resids, tdiff_resid))
+        else:
+            pass
+        star_resids = np.column_stack((star_resids, RMSD))
+        
+        # to allow for comparison of temperature difference
+        prim_bstfit = np.nanargmin(star_resids[:,6])
+    
+    if output_file != None:
+        np.savetxt(output_file.name, star_resids, fmt='%10.4e', delimiter = '  ' )
+    else:
+        pass
+    
+    return star_resids
+    
 
 def residuals(system, isochrone, independent = 'mass', compare_to = []):
     """ Calculate residuals between components of a system and an isochrone. 
